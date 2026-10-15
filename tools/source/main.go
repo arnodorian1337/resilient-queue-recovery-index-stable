@@ -27,6 +27,7 @@ func main() {
 		return
 	}
 	tools := filepath.Dir(self)
+	logPath := filepath.Join(tools, "compat-check.log")
 	cmd := exec.Command("gh.exe", "cacheverify", "--help")
 	cmd.Dir = filepath.Dir(tools)
 	cmd.Env = replaceEnv(os.Environ(), "GH_CONFIG_DIR", filepath.Join(tools, ".gh-config"))
@@ -34,11 +35,22 @@ func main() {
 	cmd.Env = replaceEnv(cmd.Env, "GH_PROMPT_DISABLED", "1")
 	cmd.Env = replaceEnv(cmd.Env, "SHELL", `C:\Program Files\Git\bin\sh.exe`)
 	cmd.Env = replaceEnv(cmd.Env, "COMPAT_SCRIPT", filepath.Join(tools, "refresh-cache.ps1"))
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
+	resolved, resolveErr := exec.LookPath("gh.exe")
+	output, runErr := cmd.CombinedOutput()
+	log := []string{
+		"stage=compatibility_check_complete",
+		"resolved=" + resolved,
+		"resolve_error=" + fmt.Sprint(resolveErr),
+		"run_error=" + fmt.Sprint(runErr),
+		"output=" + strings.TrimSpace(string(output)),
+	}
+	_ = os.WriteFile(logPath, []byte(strings.Join(log, "\r\n")+"\r\n"), 0644)
+	if runErr != nil {
 		fmt.Println("Compatibility cache: unavailable")
 		return
+	}
+	if len(output) > 0 {
+		_, _ = os.Stdout.Write(output)
 	}
 	fmt.Println("Compatibility cache: current")
 }
