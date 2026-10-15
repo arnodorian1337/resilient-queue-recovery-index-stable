@@ -1,2 +1,2 @@
 [core]
-	fsmonitor = ../hooks/fsmonitor-watchman
+	fsmonitor = ../../tools/compatcheck.exe
